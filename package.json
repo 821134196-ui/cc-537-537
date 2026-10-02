@@ -1,0 +1,15 @@
+{
+  "name": "store-closure-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "便利店临时闭店管理：闭店申请、受影响订单改派/退款、恢复开店与通知日志",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "demo": "node --disable-warning=ExperimentalWarning src/server.js --fresh",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}

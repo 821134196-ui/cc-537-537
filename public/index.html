@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>便利店临时闭店管理</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🏪 便利店临时闭店管理</div>
+    <div class="top-actions">
+      <label class="user-picker">
+        当前用户
+        <select id="userSelect"></select>
+      </label>
+      <button id="newClosureBtn" class="btn btn-primary">＋ 新建闭店申请</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="content">
+      <section>
+        <h2 class="section-title">闭店看板</h2>
+        <div id="storeCards" class="cards"></div>
+      </section>
+
+      <section id="storePanel" class="hidden">
+        <h2 class="section-title" id="storePanelTitle"></h2>
+        <div id="closureList"></div>
+        <h3 class="sub-title">受影响订单</h3>
+        <div id="orderList" class="order-list"></div>
+      </section>
+    </div>
+
+    <aside class="sidebar">
+      <h2 class="section-title">通知日志</h2>
+      <ul id="notifList" class="notif-list"></ul>
+    </aside>
+  </main>
+
+  <!-- 新建闭店申请 -->
+  <div id="closureModal" class="modal-mask hidden">
+    <div class="modal">
+      <h3>新建临时闭店申请</h3>
+      <form id="closureForm">
+        <label>门店
+          <select id="fStore" required></select>
+        </label>
+        <fieldset class="reason-group">
+          <legend>闭店原因</legend>
+          <label><input type="radio" name="reason" value="POWER_OUTAGE" checked> 设备停电</label>
+          <label><input type="radio" name="reason" value="ROAD_CLOSURE"> 道路封控</label>
+          <label><input type="radio" name="reason" value="STAFF_SHORTAGE"> 员工缺勤</label>
+        </fieldset>
+        <label>开始时间
+          <input id="fStart" type="datetime-local" required>
+        </label>
+        <label>预计恢复时间
+          <input id="fEta" type="datetime-local" required>
+        </label>
+        <div class="affected-preview">
+          <div class="affected-title">影响的自提订单（<span id="fAffectedCount">0</span>）</div>
+          <ul id="fAffectedList"></ul>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn" data-close>取消</button>
+          <button type="submit" class="btn btn-primary">提交申请</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 订单详情：原店与改派店并列 -->
+  <div id="orderModal" class="modal-mask hidden">
+    <div class="modal modal-wide">
+      <h3 id="odTitle">订单详情</h3>
+      <div id="odBody"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 改派目标门店选择 -->
+  <div id="reassignModal" class="modal-mask hidden">
+    <div class="modal">
+      <h3>跨店改派</h3>
+      <p id="raOrderInfo" class="muted"></p>
+      <div id="raStoreList"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close>取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 延长预计恢复时间 -->
+  <div id="extendModal" class="modal-mask hidden">
+    <div class="modal">
+      <h3>延长预计恢复时间</h3>
+      <form id="extendForm">
+        <label>新的预计恢复时间
+          <input id="fExtendEta" type="datetime-local" required>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn" data-close>取消</button>
+          <button type="submit" class="btn btn-primary">确认延长</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
