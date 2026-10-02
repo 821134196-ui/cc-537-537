@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>便利店临时闭店调度看板</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --ink:#2b2b2d;            /* 深灰 */
+    --ink-soft:#5c5c61;
+    --line:#e3e3e6;
+    --panel:#f6f6f7;
+    --dark:#3a3a3e;           /* 深灰面板 */
+    --dark-ink:#f2f2f3;
+    --orange:#f26a0a;         /* 明确的橙色：紧急待处理 */
+    --orange-soft:#fff1e7;
+    --green:#1d8a4f;
+    --red:#c0392b;
+    --btn-h:44px;             /* 移动端操作按钮固定尺寸 */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.55 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+  header.top{background:var(--dark);color:var(--dark-ink);padding:14px 20px;
+             display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header.top h1{font-size:18px;margin:0;font-weight:600}
+  header.top .sp{flex:1}
+  select,input,button,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+  h2{font-size:16px;margin:26px 0 10px;color:var(--ink)}
+  .hint{color:var(--ink-soft);font-size:13px}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+  .card.urgent{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange)}
+  .card .hd{padding:12px 14px;background:var(--panel);display:flex;gap:10px;align-items:baseline}
+  .card.urgent .hd{background:var(--orange-soft)}
+  .card .hd .name{font-weight:600;font-size:15px}
+  .badge{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
+         color:var(--ink-soft);background:#fff;white-space:nowrap}
+  .badge.pending{color:#8a5a00;border-color:#e3b34d;background:#fff8e6}
+  .badge.approved{color:var(--dark);border-color:var(--dark)}
+  .badge.resumed,.badge.done{color:var(--green);border-color:var(--green)}
+  .badge.urgent{background:var(--orange);border-color:var(--orange);color:#fff;font-weight:600}
+  .card .bd{padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-size:13px}
+  .card .bd .k{color:var(--ink-soft)}
+  .card .bd .v{font-weight:600;text-align:right}
+  .card .bd .v.overdue{color:var(--orange)}
+  .counts{grid-column:1/3;display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .counts span{font-size:12px;border-radius:6px;padding:3px 8px;background:var(--panel)}
+  .counts .c-pending{background:var(--orange-soft);color:#b34d00;font-weight:600}
+  .card .ft{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+
+  button{height:var(--btn-h);min-width:88px;padding:0 14px;border-radius:8px;border:1px solid var(--dark);
+         background:#fff;color:var(--ink);cursor:pointer;font-size:14px}
+  button:hover{background:var(--panel)}
+  button.primary{background:var(--dark);color:var(--dark-ink)}
+  button.primary:hover{background:#222225}
+  button.danger{border-color:var(--red);color:var(--red)}
+  button.danger:hover{background:#fdeeec}
+  button.orange{background:var(--orange);border-color:var(--orange);color:#fff;font-weight:600}
+  button.orange:hover{filter:brightness(1.05)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.sm{height:36px;min-width:72px;font-size:13px;padding:0 10px}
+
+  .panel{border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:14px}
+  .panel .ph{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--panel);
+             display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .panel .pb{padding:14px}
+
+  /* 订单详情：原店与改派店并列 */
+  .stores2{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin:6px 0 12px}
+  .storebox{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
+  .storebox.target{border-color:var(--green);background:#f1faf4}
+  .storebox.empty{border-style:dashed;color:var(--ink-soft);background:#fafafa}
+  .storebox .t{font-size:12px;color:var(--ink-soft);margin-bottom:3px}
+  .arrow{align-self:center;color:var(--ink-soft);font-size:18px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--ink-soft);font-weight:600;background:var(--panel)}
+  tr.urgent td{background:var(--orange-soft)}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:4px;margin:1px 3px 1px 0;
+       background:var(--panel);border:1px solid var(--line)}
+  .tag.chilled{background:#eef4ff;border-color:#b9cdf5;color:#2754a8}
+  .tag.warn{background:var(--orange-soft);border-color:var(--orange);color:#b34d00;font-weight:600}
+  .tag.ok{background:#eefaf2;border-color:var(--green);color:var(--green)}
+  .tag.no{background:#fdeeec;border-color:var(--red);color:var(--red)}
+
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+  dialog{border:1px solid var(--line);border-radius:12px;padding:0;width:min(460px,94vw)}
+  dialog::backdrop{background:rgba(40,40,44,.45)}
+  .dlg-hd{background:var(--dark);color:var(--dark-ink);padding:12px 16px;font-weight:600}
+  .dlg-bd{padding:16px}
+  .dlg-bd label{display:block;font-size:13px;color:var(--ink-soft);margin:10px 0 4px}
+  .dlg-bd input,.dlg-bd select,.dlg-bd textarea{width:100%;padding:9px 10px;border:1px solid var(--line);
+            border-radius:8px;background:#fff}
+  .dlg-ft{padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--dark);
+         color:var(--dark-ink);padding:10px 18px;border-radius:8px;font-size:14px;opacity:0;
+         transition:opacity .2s;pointer-events:none;max-width:90vw;z-index:99}
+  .toast.err{background:var(--red)}
+  .toast.show{opacity:1}
+  .loglist{max-height:300px;overflow:auto;font-size:12.5px}
+  .loglist .it{padding:7px 2px;border-bottom:1px solid var(--line)}
+  .loglist .ch{display:inline-block;min-width:42px;font-size:11px;color:var(--ink-soft)}
+  .loglist .tm{color:var(--ink-soft);font-size:11px;margin-left:6px}
+  a{color:inherit}
+  .filelink{font-size:12px;color:var(--ink-soft);text-decoration:underline dotted}
+
+  /* 移动端：操作按钮保持固定尺寸，不被压缩 */
+  @media (max-width:640px){
+    .wrap{padding:12px 10px 50px}
+    .cards{grid-template-columns:1fr}
+    .stores2{grid-template-columns:1fr;}
+    .arrow{transform:rotate(90deg);text-align:center}
+    table,thead,tbody,th,td,tr{display:block}
+    thead{display:none}
+    tr{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;padding:4px}
+    td{border-bottom:1px dashed var(--line);padding:8px 10px}
+    tr.urgent td{background:transparent}
+    tr.urgent{border-color:var(--orange);background:var(--orange-soft)}
+    .row-actions button{height:var(--btn-h);min-width:96px;flex:0 0 auto}
+    .card .ft button{flex:0 0 auto}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>🏪 临时闭店调度看板</h1>
+  <span class="hint" style="color:#c9c9cf">滨江区 · 演示环境（配送/支付为模拟适配器）</span>
+  <span class="sp"></span>
+  <label style="font-size:13px">当前操作人
+    <select id="actor" style="color:#222;border-radius:6px;padding:6px 8px"></select>
+  </label>
+  <button class="sm" style="min-width:64px" onclick="loadAll()">刷新</button>
+</header>
+
+<div class="wrap">
+  <div class="hint">
+    橙色 = 紧急待处理（冷藏超安全时限仅可退款 / 预计恢复时间已过）。
+    店员可发起本店闭店，但审批必须由<strong>另一位区域经理</strong>完成。
+  </div>
+
+  <h2>门店闭店看板</h2>
+  <div id="board" class="cards"></div>
+
+  <h2>受影响订单与处理</h2>
+  <div id="detail"></div>
+
+  <h2>通知日志</h2>
+  <div class="panel"><div class="pb loglist" id="logs"></div></div>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-hd" id="dlgTitle"></div>
+  <div class="dlg-bd" id="dlgBody"></div>
+  <div class="dlg-ft">
+    <button onclick="dlg.close()">取消</button>
+    <button class="primary" id="dlgOk">确认</button>
+  </div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const REASON = {outage:"设备停电", roadblock:"道路封控", absence:"员工缺勤"};
+const OSTATUS = {prepared:"已备货", notified:"已通知顾客", courier_en_route:"骑手正在路上", picked_up:"已取件"};
+const OUTCOME = {pending:"待处理", reassigned:"已改派", refunded:"已退款", customer_rejected:"拒绝改派", recalled:"已召回"};
+const dlg = document.getElementById("dlg");
+let employees = [];
+
+function actor(){return document.getElementById("actor").value;}
+function fmt(t){return t ? t.replace("T"," ").slice(0,16) : "—";}
+function money(c){return "¥" + (c/100).toFixed(2);}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function toast(msg, err){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.className="toast show"+(err?" err":"");
+  setTimeout(()=>t.className="toast", 2600);
+}
+
+async function api(path, opts={}){
+  const res = await fetch(path, {headers:{"Content-Type":"application/json"}, ...opts});
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || ("HTTP "+res.status));
+  return data;
+}
+const post = (path, body)=>api(path,{method:"POST",body:JSON.stringify(body)});
+
+function badge(status){
+  const map={pending:["待审批","pending"], approved:["已闭店·停止接单","approved"],
+             rejected:["已驳回",""], revoked:["已撤销",""], resumed:["已恢复","done"]};
+  const [txt,cls]=map[status]||[status,""];
+  return `<span class="badge ${cls}">${txt}</span>`;
+}
+
+async function loadAll(){
+  const b = await api("/api/board");
+  renderBoard(b.board);
+  // 详情展示有受影响订单或已审批/已恢复的闭店
+  const targets = b.board.filter(x=>x.affected_total>0 || x.status==="approved"
+      || x.status==="resumed");
+  document.getElementById("detail").innerHTML = "";
+  for(const c of targets){
+    const d = await api(`/api/closures/${c.closure_id}/detail`);
+    document.getElementById("detail").insertAdjacentHTML("beforeend", renderDetail(d));
+  }
+  if(!targets.length){
+    document.getElementById("detail").innerHTML =
+      '<div class="hint">暂无受影响订单：审批通过后，未取自提订单会自动进入改派/退款队列。</div>';
+  }
+  const {notifications} = await api("/api/notifications?limit=40");
+  document.getElementById("logs").innerHTML = notifications.map(n=>
+    `<div class="it"><span class="ch">[${n.channel}]</span><strong>${esc(n.subject)}</strong>
+     <span class="tm">${fmt(n.sent_at)}</span><br>
+     <span style="white-space:pre-line;color:#555">${esc(n.body)}</span>
+     <span class="tm">→ ${esc(n.recipient)}</span></div>`).join("") || '<div class="hint">暂无通知</div>';
+}
+
+function renderBoard(board){
+  const el=document.getElementById("board");
+  if(!board.length){ el.innerHTML='<div class="hint">当前没有闭店申请。</div>'; return; }
+  el.innerHTML = board.map(c=>`
+    <div class="card ${c.urgent?"urgent":""}">
+      <div class="hd">
+        <span class="name">${esc(c.store_name)}</span>
+        ${badge(c.status)}
+        ${c.urgent?'<span class="badge urgent">紧急</span>':""}
+        <span style="flex:1"></span>
+        <span class="hint">${esc(c.region)} · ${REASON[c.reason]||c.reason}</span>
+      </div>
+      <div class="bd">
+        <span class="k">开始时间</span><span class="v">${fmt(c.start_at)}</span>
+        <span class="k">预计恢复</span>
+        <span class="v ${c.overdue?"overdue":""}">${fmt(c.expected_resume)}${c.overdue?" ⚠已超时":""}</span>
+        <span class="k">受影响订单</span><span class="v ${c.pending_cnt?"":""}">${c.affected_total} 单</span>
+        <div class="counts">
+          <span class="${c.pending_cnt?"c-pending":""}">待处理 ${c.pending_cnt||0}</span>
+          <span>已改派 ${c.reassigned_cnt||0}</span>
+          <span>已退款 ${c.refunded_cnt||0}</span>
+          ${c.urgent_cnt?`<span style="background:var(--orange);color:#fff">冷藏仅退款 ${c.urgent_cnt}</span>`:""}
+        </div>
+      </div>
+      <div class="ft">
+        ${c.status==="pending" ? `
+          <button class="orange sm" onclick="actApprove('${c.closure_id}')">经理确认闭店</button>
+          <button class="sm" onclick="actReject('${c.closure_id}')">驳回</button>
+          <button class="sm" onclick="actRevoke('${c.closure_id}')">撤销申请</button>` : ""}
+        ${c.status==="approved" ? `
+          <button class="primary sm" onclick="actResume('${c.closure_id}')">恢复开店</button>
+          <button class="sm" onclick="actExtend('${c.closure_id}','${esc(c.expected_resume)}')">延长时间</button>` : ""}
+      </div>
+    </div>`).join("");
+}
+
+function renderDetail(d){
+  const c=d.closure, s=d.store;
+  const rows = d.orders.map(o=>{
+    const targetCell = o.target_store_id
+      ? `<div class="storebox target"><div class="t">改派店</div>${esc(o.target_name)}<br>
+         <span class="hint">${esc(o.target_store_id)}</span></div>`
+      : `<div class="storebox empty"><div class="t">改派店</div>尚未指定</div>`;
+    const settled = o.outcome!=="pending";
+    const canReassign = !settled && o.queue!=="refund_only" && !o.chilled_warning;
+    const canRefund = !settled && o.queue!=="reassign_only";
+    return `<tr class="${o.chilled_warning && !settled ?"urgent":""}">
+      <td>
+        <strong>${esc(o.order_id)}</strong><br>
+        ${esc(o.customer_name)} · ${esc(o.customer_phone)}<br>
+        <span class="hint">订单状态：${OSTATUS[o.order_status]||o.order_status} · ${money(o.amount_cents)}</span><br>
+        ${o.items.map(i=>`<span class="tag ${i.is_chilled?"chilled":""}">${esc(i.name)} ×${i.quantity}
+           ${i.is_chilled?"❄冷藏":""}</span>`).join("")}
+        ${o.has_chilled && o.chilled_warning?'<span class="tag warn">⚠ 冷藏已超安全时限（30 分钟）· 禁止改派</span>':""}
+        ${o.queue==="refund_only"?'<span class="tag warn">仅可退款</span>':""}
+        ${o.outcome==="customer_rejected"?'<span class="tag no">顾客拒绝改派</span>':""}
+        ${o.outcome==="reassigned"?'<span class="tag ok">已改派</span>':""}
+        ${o.outcome==="refunded"?'<span class="tag no">已退款</span>':""}
+        ${o.attachment?`<br><a class="filelink" href="/${esc(o.attachment)}" target="_blank">📎 本地订单附件</a>`:""}
+      </td>
+      <td>
+        <div class="stores2">
+          <div class="storebox"><div class="t">原店</div>${esc(s.name)}<br><span class="hint">${esc(s.id)}</span></div>
+          <div class="arrow">➜</div>${targetCell}
+        </div>
+      </td>
+      <td>
+        <div class="row-actions">
+          ${canReassign?`<button class="orange sm" onclick="actReassign('${c.id}','${o.order_id}')">跨店改派</button>`:""}
+          ${canRefund?`<button class="danger sm" onclick="actRefund('${c.id}','${o.order_id}')">退款</button>`:""}
+          ${!settled && o.reserve_id?`<button class="sm" onclick="actRejectReassign('${c.id}','${o.order_id}')">顾客拒绝改派</button>`:""}
+          ${settled?`<span class="hint">结果：${OUTCOME[o.outcome]||o.outcome}</span>`:""}
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  return `<div class="panel">
+    <div class="ph">
+      <strong>${esc(s.name)}</strong>
+      ${badge(c.status)}
+      <span class="hint">${REASON[c.reason]} · 开始 ${fmt(c.start_at)} · 预计恢复 ${fmt(c.expected_resume)}</span>
+    </div>
+    <div class="pb">
+      <table>
+        <thead><tr><th style="width:34%">订单 / 商品</th><th style="width:36%">原店 ➜ 改派店</th><th>处理</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <h2 style="font-size:14px">闭店时间线</h2>
+      <div class="loglist">${d.events.map(e=>
+        `<div class="it"><strong>${esc(e.event)}</strong><span class="tm">${fmt(e.created_at)}</span><br>
+         <span style="color:#555">${esc(e.detail||"")}</span></div>`).join("")}</div>
+    </div>
+  </div>`;
+}
+
+// ---------------- 操作对话框 ----------------
+function openDlg(title, fieldsHtml, onOk){
+  document.getElementById("dlgTitle").textContent=title;
+  document.getElementById("dlgBody").innerHTML=fieldsHtml;
+  const ok=document.getElementById("dlgOk");
+  ok.onclick=async()=>{ try{ await onOk(); dlg.close(); loadAll(); }catch(e){ toast(e.message,true); } };
+  dlg.showModal();
+}
+function fv(id){return document.getElementById(id).value;}
+
+function actApprove(cid){
+  openDlg("区域经理确认闭店",
+    `<div class="hint">确认后门店立即停止接新单，未取订单进入改派/退款队列。<br>
+     店员/发起人不能审批自己的申请。</div>`,
+    ()=>post(`/api/closures/${cid}/approve`,{manager_id:actor()}));
+}
+function actReject(cid){
+  openDlg("驳回闭店申请",
+    `<label>原因</label><textarea id="r" rows="3"></textarea>`,
+    ()=>post(`/api/closures/${cid}/reject`,{manager_id:actor(),reason:fv("r")}));
+}
+function actRevoke(cid){
+  openDlg("撤销闭店申请",`<div class="hint">仅待审批申请可撤销，通知记录会保留。</div>`,
+    ()=>post(`/api/closures/${cid}/revoke`,{actor_id:actor()}));
+}
+function actExtend(cid,old){
+  openDlg("延长预计恢复时间",
+    `<label>新的预计恢复时间（须晚于 ${fmt(old)}）</label>
+     <input id="t" type="datetime-local">
+     <label>原因</label><input id="r" value="电力抢修时间延长">`,
+    ()=>{ if(!fv("t")) throw new Error("请选择新的预计恢复时间");
+          return post(`/api/closures/${cid}/extend`,
+      {actor_id:actor(),expected_resume:new Date(fv("t")).toISOString(),reason:fv("r")});});
+}
+function actResume(cid){
+  openDlg("恢复开店",`<div class="hint">恢复后门店重新接单，挂起的库存预占将自动释放，顾客会收到通知。</div>`,
+    ()=>post(`/api/closures/${cid}/resume`,{actor_id:actor()}));
+}
+async function actRefund(cid,oid){
+  openDlg(`订单 ${oid} 原路退款`,
+    `<label>退款原因（可选）</label><input id="r" value="门店临时闭店，冷藏商品超安全时长">`,
+    ()=>post(`/api/orders/refund`,{closure_id:cid,order_id:oid,actor_id:actor(),reason:fv("r")}));
+}
+async function actReassign(cid,oid){
+  const {candidates} = await api(`/api/orders/${oid}/candidates`);
+  if(!candidates.length){
+    openDlg(`订单 ${oid} 跨店改派`,
+      `<div style="color:var(--red)">跨店库存不足：周边营业门店均无法凑齐该订单全部 SKU。<br>请改走退款。</div>`,
+      ()=>{dlg.close();});
+    return;
+  }
+  openDlg(`订单 ${oid} 跨店改派`,
+    `<label>选择承接门店（库存已实时校验）</label>
+     <select id="t">${candidates.map(c=>`<option value="${c.store_id}">${esc(c.name)}（${c.store_id}）</option>`).join("")}</select>
+     <div class="hint" style="margin-top:8px">系统将先预占目标店库存，再由模拟配送适配器生成改派单。</div>`,
+    ()=>post(`/api/orders/reassign`,
+      {closure_id:cid,order_id:oid,target_store_id:fv("t"),actor_id:actor()}));
+}
+function actRejectReassign(cid,oid){
+  openDlg(`顾客拒绝改派 · ${oid}`,
+    `<label>记录原因</label><input id="r" value="顾客拒绝改派，要求退款">
+     <div class="hint">预占库存立即释放、配送单取消，通知日志留痕，订单进入退款队列。</div>`,
+    ()=>post(`/api/orders/reject-reassign`,
+      {closure_id:cid,order_id:oid,actor_id:actor(),reason:fv("r")}));
+}
+
+// ---------------- 启动 ----------------
+(async function init(){
+  const {employees:emps} = await api("/api/employees");
+  employees=emps;
+  document.getElementById("actor").innerHTML =
+    emps.map(e=>`<option value="${e.id}">${esc(e.name)}（${e.role==="manager"?"区域经理":"店员"}）</option>`).join("");
+  // 默认选中区域经理，方便演示审批
+  document.getElementById("actor").value = emps.find(e=>e.role==="manager")?.id || emps[0].id;
+  await loadAll();
+})();
+</script>
+</body>
+</html>
